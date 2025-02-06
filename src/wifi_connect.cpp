@@ -1,8 +1,10 @@
 #include "led_control.h"
 #include "wifi_connect.h"
+#include "state_manager.h"
 
 void connectToWiFi()
 {
+  setControllerState(STATE_BOOTING);
   WiFi.disconnect(true);
   WiFi.mode(WIFI_STA);
   esp_wifi_set_storage(WIFI_STORAGE_RAM);
@@ -32,18 +34,33 @@ void connectToWiFi()
   }
 
   Serial.println("Connecting...");
-  while (WiFi.status() != WL_CONNECTED)
+  setControllerState(STATE_CONNECTING);
+  int maxAttempts = 5; // Maximum number of attempts before timeout
+  int attempts = 0;
+
+  while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts)
   {
     Serial.print(".");
     if (WiFi.status() == WL_CONNECT_FAILED)
     {
       Serial.println("\nFailed to connect. Verify credentials.");
-      setLEDColor(255, 255, 255); 
+      setControllerState(STATE_ERROR);
+      break;
     }
     delay(5000);
+    attempts++;
   }
 
-  Serial.println("\nWiFi connected!");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
+  if (attempts >= maxAttempts)
+  {
+    Serial.println("\nConnection timed out.");
+    setControllerState(STATE_ERROR);
+  }
+  else
+  {
+    setControllerState(STATE_CONNECTED);
+    Serial.println("\nWiFi connected!");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  }
 }
