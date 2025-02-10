@@ -1,6 +1,8 @@
 #include "led_control.h"
 #include "wifi_connect.h"
 #include "state_manager.h"
+#include "ota_update.h"
+#include "mdns_service.h"
 
 void connectToWiFi()
 {
@@ -12,9 +14,9 @@ void connectToWiFi()
   if (USE_WPA2_ENTERPRISE)
   {
     // === WPA2 Enterprise Connection ===
-    Serial.println("Connecting to WPA2 Enterprise Network...");
-    Serial.print("SSID: ");
-    Serial.println(ENTERPRISE_SSID);
+    RemoteConsole.println("Connecting to WPA2 Enterprise Network...");
+    RemoteConsole.print("SSID: ");
+    RemoteConsole.println(ENTERPRISE_SSID);
 
     WiFi.begin(ENTERPRISE_SSID);
     esp_wifi_sta_wpa2_ent_set_identity((uint8_t *)EAP_IDENTITY, strlen(EAP_IDENTITY));
@@ -26,24 +28,24 @@ void connectToWiFi()
   else
   {
     // === WPA2-PSK (Phone Hotspot) Connection ===
-    Serial.println("Connecting to Hotspot...");
-    Serial.print("SSID: ");
-    Serial.println(HOTSPOT_SSID);
+    RemoteConsole.println("Connecting to Hotspot...");
+    RemoteConsole.print("SSID: ");
+    RemoteConsole.println(HOTSPOT_SSID);
 
     WiFi.begin(HOTSPOT_SSID, HOTSPOT_PASSWORD);
   }
 
-  Serial.println("Connecting...");
+  RemoteConsole.println("Connecting...");
   setControllerState(STATE_CONNECTING);
   int maxAttempts = 5; // Maximum number of attempts before timeout
   int attempts = 0;
 
   while (WiFi.status() != WL_CONNECTED && attempts < maxAttempts)
   {
-    Serial.print(".");
+    RemoteConsole.print(".");
     if (WiFi.status() == WL_CONNECT_FAILED)
     {
-      Serial.println("\nFailed to connect. Verify credentials.");
+      RemoteConsole.println("\nFailed to connect. Verify credentials.");
       setControllerState(STATE_ERROR);
       break;
     }
@@ -53,14 +55,19 @@ void connectToWiFi()
 
   if (attempts >= maxAttempts)
   {
-    Serial.println("\nConnection timed out.");
+    RemoteConsole.println("\nConnection timed out.");
     setControllerState(STATE_ERROR);
   }
   else
   {
     setControllerState(STATE_CONNECTED);
-    Serial.println("\nWiFi connected!");
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
+    RemoteConsole.println("\nWiFi connected!");
+    RemoteConsole.print("IP Address: ");
+    RemoteConsole.println(WiFi.localIP().toString());
+    setupOTA();
+    startOTATask();
+    RemoteConsole.startTelnet();
+    RemoteConsole.startTask();
+    setupMDNS();
   }
 }

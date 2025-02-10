@@ -3,6 +3,7 @@
 #include "led_control.h"
 #include "wifi_connect.h"
 #include <thread.hpp>
+#include "remote_serial.h"
 
 using namespace freertos;
 
@@ -10,10 +11,10 @@ thread worker;
 
 void setup()
 {
-  Serial.begin(115200);
-  while (!Serial)
-    ;
-  Serial.println("Starting...");
+  RemoteConsole.begin(115200); // Start USB Serial immediately
+  // while (!Serial)
+    // ;
+  RemoteConsole.println("Starting...");
 
   initStateManager();
   setupLEDs();
@@ -23,8 +24,8 @@ void setup()
   worker = thread::create_affinity(1 - thread::current().affinity(), [](void *)
                                    {
         while(true) {
-            Serial.println("Hello from worker thread");
-            delay(750);
+          RemoteConsole.println("Hello from worker thread");
+          delay(750);
         } }, nullptr, 1, 2000);
 
   worker.start();
